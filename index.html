@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buchstaben-Trainer: b, d, B, D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font (Playpen Sans - Schulschrift-Alternative) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playpen+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Playpen Sans', 'Comic Sans MS', cursive, sans-serif;
+            background-color: #f8fafc;
+        }
+        .school-card {
+            touch-action: none;
+            user-select: none;
+            cursor: grab;
+        }
+        .school-card:active {
+            cursor: grabbing;
+        }
+        .letter-glow-neutral {
+            text-shadow: 0 0 15px rgba(100, 116, 139, 0.15);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 8px;
+            height: 16px;
+            background-color: #cbd5e1;
+            top: -20px;
+            opacity: 0;
+            z-index: 100;
+        }
+        @keyframes fall {
+            0% { top: -20px; transform: translateX(0) rotate(0deg); opacity: 1; }
+            100% { top: 100%; transform: translateX(100px) rotate(360deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-4 overflow-x-hidden relative">
+
+    <div id="confetti-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+    <!-- Header mit Titel -->
+    <header class="w-full max-w-md text-center py-2 md:py-4">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 drop-shadow-sm flex items-center justify-center gap-2">
+            <span>✍️</span> Buchstaben-Trainer
+        </h1>
+    </header>
+
+    <!-- Hauptbereich -->
+    <main class="flex-1 w-full max-w-md flex flex-col items-center justify-center relative my-2">
+        
+        <!-- ================= WELCOME SCREEN ================= -->
+        <div id="welcome-screen" class="bg-white rounded-3xl p-6 shadow-xl border-4 border-slate-200 text-center w-full flex flex-col items-center space-y-6">
+            <div class="space-y-2">
+                <span class="text-6xl animate-bounce inline-block">🎒</span>
+                <h2 class="text-2xl font-bold text-gray-800">Willkommen zum Training!</h2>
+                <p class="text-gray-500 text-sm leading-relaxed">
+                    Bringe Buchstaben oder Wörter zum richtigen Korb.
+                </p>
+            </div>
+
+            <!-- Name Input -->
+            <div class="w-full text-left space-y-1">
+                <label for="player-name" class="block text-sm font-bold text-slate-700">Dein Name:</label>
+                <input type="text" id="player-name" value="Gabriel" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:outline-none focus:border-slate-400 transition" placeholder="Wie heißt du?">
+            </div>
+
+            <!-- Modusauswahl -->
+            <div class="w-full text-left space-y-2">
+                <span class="block text-sm font-bold text-slate-700">Wähle deinen Übungsmodus:</span>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-mode-letters" class="py-4 px-3 border-4 border-slate-700 bg-slate-100 rounded-2xl font-black text-slate-800 flex flex-col items-center justify-center gap-1 transition-all">
+                        <span class="text-3xl">Abc</span>
+                        <span class="text-xs font-semibold text-slate-650">Buchstaben (b/d)</span>
+                    </button>
+                    <button id="btn-mode-words" class="py-4 px-3 border-4 border-slate-200 bg-white rounded-2xl font-black text-slate-500 flex flex-col items-center justify-center gap-1 transition-all">
+                        <span class="text-3xl">📝</span>
+                        <span class="text-xs font-semibold text-slate-550">Wörter</span>
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-amber-600 font-bold text-xs">
+                ⚠️ Die Körbe tauschen bei jeder Karte die Seiten!<br>
+                ⏱️ Fehler kosten dich jeweils 4 Sekunden Strafzeit!
+            </p>
+
+            <button id="btn-start" class="w-full py-4 bg-slate-700 hover:bg-slate-800 active:scale-95 transition text-white font-extrabold text-xl rounded-2xl shadow-lg border-b-4 border-slate-900 flex items-center justify-center gap-2">
+                <span>▶️</span> Spiel starten
+            </button>
+        </div>
+
+        <!-- ================= GAMEPLAY SCREEN ================= -->
+        <div id="game-screen" class="hidden w-full flex flex-col items-center space-y-4 relative">
+            
+            <!-- Pause Overlay -->
+            <div id="pause-overlay" class="hidden absolute inset-0 bg-slate-900/85 backdrop-blur-sm rounded-3xl z-50 flex flex-col items-center justify-center space-y-4 p-6">
+                <span class="text-6xl animate-pulse">⏸️</span>
+                <h3 class="text-3xl font-extrabold text-white">Pause</h3>
+                <p class="text-slate-200 text-center text-sm px-4">Das Spiel ist angehalten. Der Timer steht still.</p>
+                
+                <div class="w-full max-w-xs flex flex-col gap-3 pt-2">
+                    <button id="btn-resume" class="w-full py-4 bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-xl rounded-2xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+                        <span>▶️</span> Weiterspielen
+                    </button>
+                    
+                    <button id="btn-quit" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-base rounded-2xl shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                        <span>⏹️</span> Spiel abbrechen
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statusleiste -->
+            <div class="w-full flex gap-2">
+                <div class="flex-1 bg-white rounded-2xl px-4 py-2.5 shadow-md border-2 border-slate-100 grid grid-cols-3 gap-2 text-center text-sm font-bold text-gray-700">
+                    <div class="flex flex-col items-center justify-center bg-slate-50 rounded-xl p-1 text-slate-750">
+                        <span class="text-[10px] text-slate-550 uppercase tracking-wider">Richtig</span>
+                        <span id="stat-correct" class="text-base md:text-lg leading-tight">0</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center bg-slate-50 rounded-xl p-1 text-slate-750">
+                        <span class="text-[10px] text-slate-550 uppercase tracking-wider">Fehler</span>
+                        <span id="stat-wrong" class="text-base md:text-lg leading-tight">0</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center bg-slate-50 rounded-xl p-1 text-slate-750 relative">
+                        <span class="text-[10px] text-slate-550 uppercase tracking-wider">Zeit</span>
+                        <span id="stat-time" class="text-base md:text-lg leading-tight">0.0s</span>
+                        <span id="penalty-popup" class="absolute -top-7 right-2 text-red-600 font-extrabold text-xs bg-red-50 border border-red-200 rounded-md px-1.5 py-0.5 opacity-0 transition-all duration-300 pointer-events-none transform scale-95 shadow-sm">+4s ⚠️</span>
+                    </div>
+                </div>
+                <!-- Pause Button -->
+                <button id="btn-pause" class="px-4 bg-slate-200 hover:bg-slate-300 active:scale-95 rounded-2xl flex items-center justify-center font-bold text-slate-750 text-xl border border-slate-300 transition shadow-sm">
+                    ⏸️
+                </button>
+            </div>
+
+            <!-- Fortschrittsbalken -->
+            <div class="w-full bg-gray-200 h-3 rounded-full overflow-hidden shadow-inner border border-gray-300">
+                <div id="progress-bar" class="bg-slate-550 h-full w-0 transition-all duration-300"></div>
+            </div>
+            <div class="text-xs font-bold text-slate-800 self-end -mt-2 mr-1">
+                Karte <span id="current-index">1</span> von 20
+            </div>
+
+            <!-- Karten-Container (Spielfeld) -->
+            <div class="relative w-full h-80 flex items-center justify-between px-2 mt-4 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                
+                <!-- Linker Korb -->
+                <div id="indicator-left" class="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full border-4 border-slate-400 shadow-md flex flex-col justify-center items-center z-10 transition-all duration-200">
+                    <span id="label-left" class="text-5xl md:text-6xl font-black text-slate-850 select-none">B</span>
+                </div>
+
+                <!-- Die spielbare Karte -->
+                <div id="active-card" class="school-card absolute left-1/2 -translate-x-1/2 w-48 h-48 md:w-52 md:h-52 bg-white rounded-3xl shadow-xl border-4 border-slate-200 flex flex-col items-center justify-center transition-transform duration-100 ease-out z-20">
+                    <span id="card-letter" class="font-black select-none leading-none text-slate-800 letter-glow-neutral text-center px-2">b</span>
+                </div>
+
+                <!-- Rechter Korb -->
+                <div id="indicator-right" class="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full border-4 border-slate-400 shadow-md flex flex-col justify-center items-center z-10 transition-all duration-200">
+                    <span id="label-right" class="text-5xl md:text-6xl font-black text-slate-850 select-none">D</span>
+                </div>
+
+            </div>
+
+            <!-- Interaktions-Buttons -->
+            <div class="w-full grid grid-cols-2 gap-4 pt-2">
+                <button id="btn-swipe-left" class="py-4 bg-slate-600 hover:bg-slate-700 active:scale-95 transition text-white font-black text-lg rounded-2xl shadow-md border-b-4 border-slate-800 flex flex-col items-center justify-center gap-1">
+                    <span class="text-xs font-semibold opacity-75">⬅️ Links</span>
+                    <span id="btn-label-left" class="text-3xl">B</span>
+                </button>
+                <button id="btn-swipe-right" class="py-4 bg-slate-600 hover:bg-slate-700 active:scale-95 transition text-white font-black text-lg rounded-2xl shadow-md border-b-4 border-slate-800 flex flex-col items-center justify-center gap-1">
+                    <span class="text-xs font-semibold opacity-75">Rechts ➡️</span>
+                    <span id="btn-label-right" class="text-3xl">D</span>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- ================= SUMMARY SCREEN ================= -->
+        <div id="summary-screen" class="hidden bg-white rounded-3xl p-6 shadow-xl border-4 border-slate-200 text-center w-full flex flex-col items-center space-y-5">
+            <div id="victory-header" class="space-y-1">
+                <span id="victory-emoji" class="text-6xl block">🏆</span>
+                <h2 class="text-2xl font-black text-gray-800">Auswertung läuft...</h2>
+            </div>
+
+            <!-- Rekord-Banner -->
+            <div id="new-record-banner" class="hidden w-full bg-yellow-400 text-slate-900 font-black text-xl py-2 rounded-xl border-2 border-yellow-600 animate-bounce">
+                🔥 NEUER REKORD-PLATZ! 🔥
+            </div>
+
+            <!-- Statistiken Tabelle mit Roll-Effekt -->
+            <div class="w-full grid grid-cols-2 gap-2 text-sm">
+                <div class="bg-gray-50 p-2 border border-gray-200 rounded-xl">
+                    <span class="block text-gray-500 text-[10px] font-bold uppercase">Richtig</span>
+                    <span id="summary-correct" class="text-xl font-black text-slate-800">0</span>
+                </div>
+                <div class="bg-gray-50 p-2 border border-gray-200 rounded-xl">
+                    <span class="block text-gray-500 text-[10px] font-bold uppercase">Fehler</span>
+                    <span id="summary-wrong" class="text-xl font-black text-slate-800">0</span>
+                </div>
+                <div class="bg-gray-50 p-2 border border-gray-200 rounded-xl">
+                    <span class="block text-gray-500 text-[10px] font-bold uppercase">Strafzeit</span>
+                    <span id="summary-penalty" class="text-xl font-black text-red-600">0s</span>
+                </div>
+                <div class="bg-gray-50 p-2 border border-gray-200 rounded-xl bg-slate-100">
+                    <span class="block text-slate-600 text-[10px] font-bold uppercase">Endzeit Gesamt</span>
+                    <span id="summary-time" class="text-xl font-black text-slate-900">0.0s</span>
+                </div>
+            </div>
+
+            <!-- BESTENLISTE REVEAL BEREICH -->
+            <div class="w-full bg-slate-900 text-white p-4 rounded-2xl text-left space-y-3 shadow-inner relative overflow-hidden min-h-[220px]">
+                <h4 class="font-black text-xs text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>🏆 Bestenliste (<span id="leaderboard-mode-name">---</span>)</span>
+                    <span id="reveal-status" class="text-yellow-400 animate-pulse text-[11px]">Berechne...</span>
+                </h4>
+                
+                <div id="reveal-loader" class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div id="reveal-loader-bar" class="bg-yellow-400 h-full w-0 transition-all duration-1000"></div>
+                </div>
+
+                <div id="leaderboard-list" class="space-y-1.5 text-xs text-slate-300"></div>
+            </div>
+
+            <!-- Fehler-Analyse -->
+            <div id="mistakes-analysis" class="w-full text-left bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs text-slate-800 space-y-1 hidden">
+                <p class="font-bold">🎯 Das üben wir noch:</p>
+                <p id="mistakes-list"></p>
+            </div>
+
+            <button id="btn-restart" class="w-full py-3.5 bg-slate-700 hover:bg-slate-800 active:scale-95 transition text-white font-extrabold text-lg rounded-2xl shadow-md border-b-4 border-slate-900 flex items-center justify-center gap-2 opacity-50 pointer-events-none">
+                <span>🔄</span> Erneut versuchen
+            </button>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, getDocs } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        // --- Firebase Initialisierung ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'buchstaben-trainer-app';
+        let db = null; let auth = null; let user = null; let isFirebaseEnabled = false;
+
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            try {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app); db = getFirestore(app); isFirebaseEnabled = true;
+            } catch (err) { console.error("Firebase Init Fehler:", err); }
+        }
+
+        if (isFirebaseEnabled) {
+            onAuthStateChanged(auth, (u) => { user = u; loadHighscores(); });
+            (async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else { await signInAnonymously(auth); }
+                } catch(e){}
+            })();
+        } else { setTimeout(() => loadHighscores(), 500); }
+
+        // --- Audio Synthesizer ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12); 
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(130, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.25);
+                gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'tick') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'reveal-row') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(330, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime + 0.05);
+                gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+            } else if (type === 'epic-win') {
+                const now = audioCtx.currentTime; const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; 
+                notes.forEach((freq, idx) => {
+                    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination); o.type = 'sine';
+                    o.frequency.setValueAtTime(freq, now + idx * 0.08); g.gain.setValueAtTime(0.08, now + idx * 0.08);
+                    g.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.08 + 0.4);
+                    o.start(now + idx * 0.08); o.stop(now + idx * 0.08 + 0.4);
+                });
+            }
+        }
+
+        // --- Wortlisten (Exakt 1x Vorkommen, 50% Anfang / 50% im Wort) ---
+        const LETTERS = ['b', 'd', 'B', 'D'];
+        const B_WORDS = [
+            'Ball', 'Brot', 'Buch', 'Biene', 'Baum', 'Bett', 'Birne', 'Bär', 'Brille', 'Berg', 'blau', 'bunt', 'bauen',
+            'lieb', 'gelb', 'Gabel', 'Herbst', 'sieben', 'oben', 'Rübe', 'kleben', 'Knabe', 'Taube', 'haben', 'weben'
+        ];
+        const D_WORDS = [
+            'Dose', 'Dach', 'Drache', 'Daumen', 'Dorf', 'Dino', 'Dame', 'Decke', 'Daheim', 'Dorn', 'danken', 'denken', 'dünn',
+            'wild', 'rund', 'Hand', 'Mund', 'Kleid', 'Wald', 'Kreide', 'Feder', 'Jeder', 'laden', 'finding', 'Kinder'
+        ];
+
+        const TOTAL_CARDS = 20; let deck = []; let currentIndex = 0; let score = { correct: 0, wrong: 0 };
+        let startTime = null; let timerInterval = null; let wrongLettersSet = new Set();
+        let isPaused = false; let penaltyTime = 0; let totalPausedDuration = 0; let pauseStartTime = null;
+        let currentMode = 'letters'; let sessionHighscores = [];
+        let leftOption = ''; let rightOption = '';
+
+        // --- Drag Bindings ---
+        const activeCard = document.getElementById('active-card');
+        const indicatorLeft = document.getElementById('indicator-left');
+        const indicatorRight = document.getElementById('indicator-right');
+        const labelLeft = document.getElementById('label-left'); const labelRight = document.getElementById('label-right');
+        const btnLabelLeft = document.getElementById('btn-label-left'); const btnLabelRight = document.getElementById('btn-label-right');
+        let startX = 0; let currentX = 0; let isDragging = false; const swipeThreshold = 70;
+
+        // --- DOM Bindings ---
+        const welcomeScreen = document.getElementById('welcome-screen'); const gameScreen = document.getElementById('game-screen');
+        const summaryScreen = document.getElementById('summary-screen'); const cardLetter = document.getElementById('card-letter');
+        const statCorrect = document.getElementById('stat-correct'); const statWrong = document.getElementById('stat-wrong');
+        const statTime = document.getElementById('stat-time'); const currentIdxDisplay = document.getElementById('current-index');
+        const progressBar = document.getElementById('progress-bar'); const playerNameInput = document.getElementById('player-name');
+
+        // --- Event Listeners ---
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-restart').addEventListener('click', startGame);
+        document.getElementById('btn-swipe-left').addEventListener('click', () => handleButtonChoice('left'));
+        document.getElementById('btn-swipe-right').addEventListener('click', () => handleButtonChoice('right'));
+        document.getElementById('btn-pause').addEventListener('click', togglePause);
+        document.getElementById('btn-resume').addEventListener('click', togglePause);
+        document.getElementById('btn-quit').addEventListener('click', quitGame);
+        document.getElementById('btn-mode-letters').addEventListener('click', () => setMode('letters'));
+        document.getElementById('btn-mode-words').addEventListener('click', () => setMode('words'));
+
+        activeCard.addEventListener('mousedown', dragStart); document.addEventListener('mousemove', dragMove); document.addEventListener('mouseup', dragEnd);
+        activeCard.addEventListener('touchstart', dragStart, { passive: true }); document.addEventListener('touchmove', dragMove, { passive: false }); document.addEventListener('touchend', dragEnd);
+        activeCard.addEventListener('dragstart', (e) => e.preventDefault());
+
+        function setMode(mode) {
+            currentMode = mode;
+            const bL = document.getElementById('btn-mode-letters'); const bW = document.getElementById('btn-mode-words');
+            if (mode === 'letters') {
+                bL.className = "py-4 px-3 border-4 border-slate-700 bg-slate-100 rounded-2xl font-black text-slate-800 flex flex-col items-center justify-center gap-1 transition-all";
+                bW.className = "py-4 px-3 border-4 border-slate-200 bg-white rounded-2xl font-black text-slate-500 flex flex-col items-center justify-center gap-1 transition-all";
+            } else {
+                bW.className = "py-4 px-3 border-4 border-slate-700 bg-slate-100 rounded-2xl font-black text-slate-800 flex flex-col items-center justify-center gap-1 transition-all";
+                bL.className = "py-4 px-3 border-4 border-slate-200 bg-white rounded-2xl font-black text-slate-500 flex flex-col items-center justify-center gap-1 transition-all";
+            }
+        }
+
+        function startGame() {
+            currentIndex = 0; score.correct = 0; score.wrong = 0; wrongLettersSet.clear();
+            isPaused = false; penaltyTime = 0; totalPausedDuration = 0; pauseStartTime = null;
+            
+            // UI-Resets für eine neue Spielrunde
+            document.getElementById('pause-overlay').classList.add('hidden');
+            document.getElementById('new-record-banner').classList.add('hidden');
+            document.getElementById('mistakes-analysis').classList.add('hidden');
+            
+            const restartBtn = document.getElementById('btn-restart');
+            if (restartBtn) {
+                restartBtn.classList.add('opacity-50', 'pointer-events-none');
+            }
+            
+            const loaderBar = document.getElementById('reveal-loader-bar');
+            if (loaderBar) {
+                loaderBar.style.display = 'block';
+                loaderBar.style.width = '0%';
+            }
+            
+            const revealStatus = document.getElementById('reveal-status');
+            if (revealStatus) {
+                revealStatus.textContent = 'Berechne...';
+            }
+
+            deck = [];
+            if (currentMode === 'letters') {
+                for (let i = 0; i < TOTAL_CARDS; i++) deck.push(LETTERS[Math.floor(Math.random() * LETTERS.length)]);
+            } else {
+                deck = [...B_WORDS, ...D_WORDS].sort(() => 0.5 - Math.random()).slice(0, TOTAL_CARDS);
+            }
+
+            statCorrect.textContent = '0'; statWrong.textContent = '0'; statTime.textContent = '0.0s';
+            currentIdxDisplay.textContent = '1'; progressBar.style.width = '0%';
+            welcomeScreen.classList.add('hidden'); summaryScreen.classList.add('hidden'); gameScreen.classList.remove('hidden');
+
+            setupCard();
+            startTime = Date.now();
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 100);
+        }
+
+        function togglePause() {
+            if (!startTime) return;
+            isPaused = !isPaused;
+            const pO = document.getElementById('pause-overlay');
+            if (isPaused) { pauseStartTime = Date.now(); pO.classList.remove('hidden'); }
+            else { totalPausedDuration += (Date.now() - pauseStartTime); pauseStartTime = null; pO.classList.add('hidden'); }
+        }
+
+        function quitGame() {
+            clearInterval(timerInterval);
+            document.getElementById('pause-overlay').classList.add('hidden');
+            gameScreen.classList.add('hidden'); welcomeScreen.classList.remove('hidden');
+            resetCardPosition();
+        }
+
+        function updateTimer() {
+            if (!startTime || isPaused) return;
+            const elapsed = (Date.now() - startTime - totalPausedDuration) / 1000 + penaltyTime;
+            statTime.textContent = elapsed.toFixed(1) + 's';
+        }
+
+        function triggerPenaltyPopup() {
+            const popup = document.getElementById('penalty-popup'); if (!popup) return;
+            popup.classList.remove('opacity-0', 'scale-95'); popup.classList.add('opacity-100', 'scale-110');
+            updateTimer();
+            setTimeout(() => { popup.classList.remove('opacity-100', 'scale-110'); popup.classList.add('opacity-0', 'scale-95'); }, 1200);
+        }
+
+        function setupCard() {
+            if (currentIndex >= deck.length) { endGame(); return; }
+            const item = deck[currentIndex]; cardLetter.textContent = item;
+            currentIdxDisplay.textContent = currentIndex + 1;
+            
+            if (item.length === 1) cardLetter.style.fontSize = '6.5rem';
+            else if (item.length < 6) cardLetter.style.fontSize = '3.5rem';
+            else cardLetter.style.fontSize = '2.4rem';
+
+            cardLetter.className = 'font-black select-none leading-none text-slate-800 letter-glow-neutral text-center px-2';
+            activeCard.style.borderColor = '#e2e8f0'; 
+
+            const isUpper = item[0] === item[0].toUpperCase() && item[0] !== item[0].toLowerCase();
+            const targets = isUpper ? ['b', 'd'] : ['B', 'D'];
+
+            if (Math.random() > 0.5) { leftOption = targets[0]; rightOption = targets[1]; }
+            else { leftOption = targets[1]; rightOption = targets[0]; }
+
+            labelLeft.textContent = leftOption; labelRight.textContent = rightOption;
+            btnLabelLeft.textContent = leftOption; btnLabelRight.textContent = rightOption;
+            progressBar.style.width = `${(currentIndex / TOTAL_CARDS) * 100}%`;
+            resetCardPosition();
+        }
+
+        function handleChoice(direction) {
+            if (isPaused) return;
+            const item = deck[currentIndex]; const chosen = (direction === 'left') ? leftOption : rightOption;
+            const isCorrect = (item.toLowerCase().includes('b') && chosen.toLowerCase() === 'b') || (item.toLowerCase().includes('d') && chosen.toLowerCase() === 'd');
+
+            if (isCorrect) {
+                score.correct++; statCorrect.textContent = score.correct;
+                playSound('correct'); animateCardDeparture(direction);
+            } else {
+                score.wrong++; statWrong.textContent = score.wrong;
+                penaltyTime += 4; triggerPenaltyPopup();
+                wrongLettersSet.add(item); playSound('wrong'); animateCardShake();
+            }
+        }
+
+        function animateCardDeparture(direction) {
+            const flyX = direction === 'left' ? -400 : 400;
+            activeCard.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+            activeCard.style.transform = `translate3d(${flyX}px, -20px, 0) rotate(${direction === 'left' ? -25 : 25}deg)`;
+            const tk = direction === 'left' ? indicatorLeft : indicatorRight;
+            tk.classList.add('scale-110', 'bg-slate-100', 'border-slate-600');
+            setTimeout(() => { tk.classList.remove('scale-110', 'bg-slate-100', 'border-slate-600'); currentIndex++; setupCard(); }, 250);
+        }
+
+        function animateCardShake() {
+            activeCard.style.transition = 'transform 0.1s ease-in-out';
+            let c = 0;
+            const si = setInterval(() => {
+                c++;
+                if (c === 1) activeCard.style.transform = 'translate3d(-10px, -50%, 0) rotate(-2deg)';
+                if (c === 2) activeCard.style.transform = 'translate3d(10px, -50%, 0) rotate(2deg)';
+                if (c === 5) { clearInterval(si); resetCardPosition(); }
+            }, 70);
+        }
+
+        function handleButtonChoice(direction) { handleChoice(direction); }
+        function resetCardPosition() {
+            activeCard.style.transition = 'none'; activeCard.style.transform = 'translate3d(-50%, -50%, 0) rotate(0deg)';
+            activeCard.style.left = '50%'; activeCard.style.top = '50%';
+        }
+
+        function runValueCounter(elementId, targetValue, duration, isFloat = false) {
+            return new Promise((resolve) => {
+                const el = document.getElementById(elementId); let start = 0; const steps = 15;
+                const stepTime = duration / steps; let currentStep = 0;
+                const timer = setInterval(() => {
+                    currentStep++; start += targetValue / steps; playSound('tick');
+                    if (currentStep >= steps) {
+                        clearInterval(timer); el.textContent = isFloat ? targetValue.toFixed(1) + 's' : targetValue; resolve();
+                    } else { el.textContent = isFloat ? start.toFixed(1) + 's' : Math.floor(start); }
+                }, stepTime);
+            });
+        }
+
+        function spawnConfetti() {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+            for (let i = 0; i < 40; i++) {
+                const p = document.createElement('div'); p.className = 'confetti-piece';
+                p.style.left = Math.random() * 100 + '%'; p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                p.style.animation = `fall ${1.5 + Math.random() * 2}s linear forwards`; p.style.transform = `rotate(${Math.random() * 360}deg)`;
+                container.appendChild(p); setTimeout(() => p.remove(), 3500);
+            }
+        }
+
+        async function endGame() {
+            clearInterval(timerInterval);
+            const pureElapsed = (Date.now() - startTime - totalPausedDuration) / 1000;
+            const finalTime = pureElapsed + penaltyTime; const playerName = playerNameInput.value.trim() || 'Gabriel';
+
+            gameScreen.classList.add('hidden'); summaryScreen.classList.remove('hidden');
+            document.getElementById('victory-header').innerHTML = `<span class="text-6xl block">🏁</span><h2 class="text-2xl font-black text-gray-800">Ziel erreicht!</h2>`;
+            
+            await runValueCounter('summary-correct', score.correct, 200);
+            await runValueCounter('summary-wrong', score.wrong, 200);
+            await runValueCounter('summary-penalty', penaltyTime, 200);
+            await runValueCounter('summary-time', finalTime, 350, true);
+
+            await saveHighscore(playerName, currentMode, finalTime, score.correct, score.wrong, penaltyTime);
+        }
+
+        async function saveHighscore(name, mode, time, correct, wrong, penalty) {
+            const scoreData = { name, mode, time: parseFloat(time), wrong, timestamp: new Date().toISOString() };
+            if (isFirebaseEnabled && user) {
+                try {
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'highscores');
+                    await addDoc(colRef, scoreData);
+                } catch (e) { sessionHighscores.push(scoreData); }
+            } else { sessionHighscores.push(scoreData); }
+            await processAndRevealLeaderboard(scoreData);
+        }
+
+        async function processAndRevealLeaderboard(currentRun) {
+            const listEl = document.getElementById('leaderboard-list'); const statusEl = document.getElementById('reveal-status');
+            const loaderBar = document.getElementById('reveal-loader-bar'); const restartBtn = document.getElementById('btn-restart');
+            
+            listEl.innerHTML = ''; statusEl.textContent = 'Berechne Rang...'; 
+            loaderBar.style.display = 'block';
+            loaderBar.style.width = '100%';
+
+            try {
+                let rawScores = [];
+                if (isFirebaseEnabled && user) {
+                    try {
+                        const snapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'highscores'));
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            if (data) rawScores.push(data);
+                        });
+                    } catch(e) { rawScores = [...sessionHighscores]; }
+                } else { rawScores = [...sessionHighscores]; }
+
+                // Robuste Validierung und Sortierung zur Vermeidung von NaN-Fehlern durch fehlerhafte Einträge
+                const filtered = rawScores
+                    .filter(s => s && s.mode === currentMode)
+                    .sort((a, b) => {
+                        const timeA = typeof a.time === 'number' ? a.time : parseFloat(a.time) || 999;
+                        const timeB = typeof b.time === 'number' ? b.time : parseFloat(b.time) || 999;
+                        return timeA - timeB;
+                    })
+                    .slice(0, 5);
+
+                await new Promise(r => setTimeout(r, 1000));
+                statusEl.textContent = 'Enthülle Platz 5-1...'; loaderBar.style.display = 'none';
+
+                const currentRunTime = typeof currentRun.time === 'number' ? currentRun.time : parseFloat(currentRun.time) || 0;
+                const isNumberOne = filtered.length > 0 && 
+                    (typeof filtered[0].time === 'number' ? filtered[0].time : parseFloat(filtered[0].time) || 0) === currentRunTime && 
+                    filtered[0].name === currentRun.name;
+
+                for (let i = filtered.length - 1; i >= 0; i--) {
+                    await new Promise(r => setTimeout(r, 450));
+                    const scoreItem = filtered[i];
+                    if (!scoreItem) continue;
+
+                    const scoreTime = typeof scoreItem.time === 'number' ? scoreItem.time : parseFloat(scoreItem.time) || 0;
+                    const scoreName = typeof scoreItem.name === 'string' ? scoreItem.name : 'Spieler';
+                    const scoreWrong = typeof scoreItem.wrong === 'number' ? scoreItem.wrong : parseInt(scoreItem.wrong) || 0;
+
+                    const isOwnRow = Math.abs(scoreTime - currentRunTime) < 0.01 && scoreName === currentRun.name;
+                    
+                    const rowHtml = `
+                        <div class="opacity-0 translate-y-2 animate-pop-in flex justify-between items-center p-2 rounded-xl border ${isOwnRow ? 'bg-amber-400/20 border-amber-400 shadow-glow' : 'bg-slate-800 border-slate-700'}">
+                            <div class="flex items-center gap-2">
+                                <span class="font-black ${isOwnRow ? 'text-amber-400' : 'text-slate-500'} w-4">${i + 1}.</span>
+                                <span class="font-extrabold ${isOwnRow ? 'text-amber-200' : 'text-white'}">${escapeHTML(scoreName)}</span>
+                            </div>
+                            <div class="flex items-center gap-2 font-semibold text-[11px]">
+                                <span class="text-slate-400">${scoreWrong > 0 ? `(${scoreWrong} ⚠️)` : '⭐'}</span>
+                                <span class="font-black ${isOwnRow ? 'text-amber-400 text-sm' : 'text-slate-200'}">${scoreTime.toFixed(1)}s</span>
+                            </div>
+                        </div>
+                    `;
+                    listEl.insertAdjacentHTML('afterbegin', rowHtml);
+                    playSound('reveal-row');
+                }
+
+                if (score.wrong > 0) {
+                    const mistakesAnalysis = document.getElementById('mistakes-analysis');
+                    const mistakesList = document.getElementById('mistakes-list');
+                    mistakesAnalysis.classList.remove('hidden');
+                    const hardLetters = Array.from(wrongLettersSet).map(l => `"${l}"`).join(', ');
+                    mistakesList.textContent = `Hier gab es kleine Hürden: ${hardLetters}. Weiter so!`;
+                }
+
+                if (isNumberOne) {
+                    document.getElementById('new-record-banner').classList.remove('hidden');
+                    document.getElementById('victory-emoji').textContent = '👑';
+                    playSound('epic-win'); spawnConfetti();
+                }
+            } catch (err) {
+                console.error("Fehler beim Verarbeiten der Bestenliste:", err);
+            } finally {
+                // Der finally-Block garantiert, dass der Button UNTER ALLEN UMSTÄNDEN freigeschaltet wird
+                statusEl.textContent = 'Abgeschlossen';
+                restartBtn.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function loadHighscores() {
+            document.getElementById('leaderboard-mode-name').textContent = currentMode === 'letters' ? 'Buchstaben' : 'Wörter';
+        }
+
+        function dragStart(e) {
+            if (isPaused) return; isDragging = true; activeCard.style.transition = 'none';
+            startX = (e.type === 'touchstart') ? e.touches[0].clientX : e.clientX; currentX = startX;
+        }
+
+        function dragMove(e) {
+            if (!isDragging || isPaused) return;
+            let clientX = (e.type === 'touchmove') ? e.touches[0].clientX : e.clientX;
+            if (e.type === 'touchmove' && e.cancelable) e.preventDefault();
+            currentX = clientX; const deltaX = currentX - startX; const rotate = (deltaX / 250) * 15;
+            activeCard.style.transform = `translate3d(calc(-50% + ${deltaX}px), -50%, 0) rotate(${rotate}deg)`;
+        }
+
+        function dragEnd() {
+            if (!isDragging) return; isDragging = false; const deltaX = currentX - startX;
+            if (deltaX < -swipeThreshold) handleChoice('left');
+            else if (deltaX > swipeThreshold) handleChoice('right');
+            else { activeCard.style.transition = 'transform 0.2s ease-out'; resetCardPosition(); }
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t));
+        }
+    </script>
+</body>
+</html>
