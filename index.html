@@ -329,7 +329,7 @@
         ];
         const D_WORDS = [
             'Dose', 'Dach', 'Drache', 'Daumen', 'Dorf', 'Dino', 'Dame', 'Decke', 'Daheim', 'Dorn', 'danken', 'denken', 'dünn',
-            'wild', 'rund', 'Hand', 'Mund', 'Kleid', 'Wald', 'Kreide', 'Feder', 'Jeder', 'laden', 'finding', 'Kinder'
+            'wild', 'rund', 'Hand', 'Mund', 'Kleid', 'Wald', 'Kreide', 'Feder', 'Jeder', 'laden', 'finden', 'Kinder'
         ];
 
         const TOTAL_CARDS = 20; let deck = []; let currentIndex = 0; let score = { correct: 0, wrong: 0 };
@@ -462,8 +462,10 @@
             cardLetter.className = 'font-black select-none leading-none text-slate-800 letter-glow-neutral text-center px-2';
             activeCard.style.borderColor = '#e2e8f0'; 
 
-            const isUpper = item[0] === item[0].toUpperCase() && item[0] !== item[0].toLowerCase();
-            const targets = isUpper ? ['b', 'd'] : ['B', 'D'];
+            // Wenn der Zielbuchstabe (B oder D) großgeschrieben im Wort vorkommt, zeigen die Körbe Kleinbuchstaben, ansonsten Großbuchstaben.
+            // Das stellt sicher, dass bei einem 'b' oder 'd' innerhalb eines Nomens (z. B. "Feder") die Optionen versal ('B'/'D') sind.
+            const hasUpperTarget = item.includes('B') || item.includes('D');
+            const targets = hasUpperTarget ? ['b', 'd'] : ['B', 'D'];
 
             if (Math.random() > 0.5) { leftOption = targets[0]; rightOption = targets[1]; }
             else { leftOption = targets[1]; rightOption = targets[0]; }
@@ -656,6 +658,8 @@
         function loadHighscores() {
             document.getElementById('leaderboard-mode-name').textContent = currentMode === 'letters' ? 'Buchstaben' : 'Wörter';
         }
+
+        // --- Drag & Drop Steuerung ---
 
         function dragStart(e) {
             if (isPaused) return; isDragging = true; activeCard.style.transition = 'none';
