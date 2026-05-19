@@ -75,7 +75,7 @@
             <!-- Name Input -->
             <div class="w-full text-left space-y-1">
                 <label for="player-name" class="block text-sm font-bold text-slate-700">Dein Name:</label>
-                <input type="text" id="player-name" value="Gabriel" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:outline-none focus:border-slate-400 transition" placeholder="Wie heißt du?">
+                <input type="text" id="player-name" value="Elena" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:outline-none focus:border-slate-400 transition" placeholder="Wie heißt du?">
             </div>
 
             <!-- Modusauswahl -->
@@ -544,7 +544,7 @@
         async function endGame() {
             clearInterval(timerInterval);
             const pureElapsed = (Date.now() - startTime - totalPausedDuration) / 1000;
-            const finalTime = pureElapsed + penaltyTime; const playerName = playerNameInput.value.trim() || 'Gabriel';
+            const finalTime = pureElapsed + penaltyTime; const playerName = playerNameInput.value.trim() || 'Elena';
 
             gameScreen.classList.add('hidden'); summaryScreen.classList.remove('hidden');
             document.getElementById('victory-header').innerHTML = `<span class="text-6xl block">🏁</span><h2 class="text-2xl font-black text-gray-800">Ziel erreicht!</h2>`;
