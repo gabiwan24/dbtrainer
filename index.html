@@ -72,10 +72,10 @@
                 </p>
             </div>
 
-            <!-- Name Input -->
+            <!-- Name Input (Wert startet leer für eigene Eingabe) -->
             <div class="w-full text-left space-y-1">
                 <label for="player-name" class="block text-sm font-bold text-slate-700">Dein Name:</label>
-                <input type="text" id="player-name" value="Elena" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:outline-none focus:border-slate-400 transition" placeholder="Wie heißt du?">
+                <input type="text" id="player-name" value="" class="w-full px-4 py-3 border-2 border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:outline-none focus:border-slate-400 transition" placeholder="Schreibe deinen Namen hier...">
             </div>
 
             <!-- Modusauswahl -->
@@ -368,6 +368,12 @@
         activeCard.addEventListener('touchstart', dragStart, { passive: true }); document.addEventListener('touchmove', dragMove, { passive: false }); document.addEventListener('touchend', dragEnd);
         activeCard.addEventListener('dragstart', (e) => e.preventDefault());
 
+        // Name aus vorheriger Spielsitzung laden, falls vorhanden
+        const storedName = localStorage.getItem('trainer_player_name');
+        if (storedName) {
+            playerNameInput.value = storedName;
+        }
+
         function setMode(mode) {
             currentMode = mode;
             const bL = document.getElementById('btn-mode-letters'); const bW = document.getElementById('btn-mode-words');
@@ -381,6 +387,19 @@
         }
 
         function startGame() {
+            const playerName = playerNameInput.value.trim();
+            
+            // Verhindert das Starten des Spiels ohne Namen
+            if (!playerName) {
+                playerNameInput.classList.add('border-red-500');
+                playerNameInput.focus();
+                return;
+            }
+            
+            // Name für das nächste Spiel speichern
+            playerNameInput.classList.remove('border-red-500');
+            localStorage.setItem('trainer_player_name', playerName);
+
             currentIndex = 0; score.correct = 0; score.wrong = 0; wrongLettersSet.clear();
             isPaused = false; penaltyTime = 0; totalPausedDuration = 0; pauseStartTime = null;
             
@@ -544,7 +563,7 @@
         async function endGame() {
             clearInterval(timerInterval);
             const pureElapsed = (Date.now() - startTime - totalPausedDuration) / 1000;
-            const finalTime = pureElapsed + penaltyTime; const playerName = playerNameInput.value.trim() || 'Elena';
+            const finalTime = pureElapsed + penaltyTime; const playerName = playerNameInput.value.trim() || 'Spieler';
 
             gameScreen.classList.add('hidden'); summaryScreen.classList.remove('hidden');
             document.getElementById('victory-header').innerHTML = `<span class="text-6xl block">🏁</span><h2 class="text-2xl font-black text-gray-800">Ziel erreicht!</h2>`;
